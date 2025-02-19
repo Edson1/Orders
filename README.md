@@ -13,7 +13,8 @@ POST https://dvlkefayse.execute-api.us-west-2.amazonaws.com/Dev/orders
 
 Request body example:
 {
-        "fecha_entrega": "10/04/2026",
+        "id": "",
+        "fecha_entrega": "10-04-2026",
         "descripcion": "creacion de orden de trabajo",
         "estado": "recibida"
 }
@@ -27,7 +28,7 @@ OK status 200
         "fecha_registro": "2025-02-19T01:24:06.559861",
         "timestamp": "1739928246.559875",
         "descripcion": "creacion de orden de trabajo",
-        "fecha_entrega": "10/04/2026",
+        "fecha_entrega": "10-04-2026",
         "estado": "recibida"
     }
 }
