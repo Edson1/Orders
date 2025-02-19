@@ -70,7 +70,7 @@ def OrderLambda(event, context):
             }
         orderId = body["id"]  # Usar el ID proporcionado por el frontend
 
-    print('Order ID: ' + orderId)
+    # print('Order ID: ' + orderId)
 
     try:
         order = {
