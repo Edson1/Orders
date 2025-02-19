@@ -1,0 +1,128 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Dev
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /orders:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrdersFunction.Arn}/invocations
+              responses: {}
+        components:
+          securitySchemes: {}  # Removes all authentication requirements
+        security: []  # Public access, no authentication required
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+        MaxAge: 600
+
+  
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+
+  OrdersQueueInProcess:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 345600
+  OrdersQueueReceived:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 345600
+  OrdersQueueCompleted:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 345600
+  OrdersQueueCancelled:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 345600
+  
+  
+  OrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: OrdersFunction
+      CodeUri: s3://publicrepos/handler.zip
+      Handler: handler.OrderLambda 
+      Runtime: python3.9
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          ORDERSTABLE_TABLE_NAME: !Ref OrdersTable
+          ORDERSTABLE_TABLE_ARN: !GetAtt OrdersTable.Arn
+          ORDERSQUEUEINPROCESS_QUEUE_NAME: !GetAtt OrdersQueueInProcess.QueueName
+          ORDERSQUEUEINPROCESS_QUEUE_ARN: !GetAtt OrdersQueueInProcess.Arn
+          ORDERSQUEUEINPROCESS_QUEUE_URL: !Ref OrdersQueueInProcess
+          ORDERSQUEUERECEIVED_QUEUE_NAME: !GetAtt OrdersQueueReceived.QueueName
+          ORDERSQUEUERECEIVED_QUEUE_ARN: !GetAtt OrdersQueueReceived.Arn
+          ORDERSQUEUERECEIVED_QUEUE_URL: !Ref OrdersQueueReceived
+          ORDERSQUEUECOMPLETED_QUEUE_NAME: !GetAtt OrdersQueueCompleted.QueueName
+          ORDERSQUEUECOMPLETED_QUEUE_ARN: !GetAtt OrdersQueueCompleted.Arn
+          ORDERSQUEUECOMPLETED_QUEUE_URL: !Ref OrdersQueueCompleted
+          ORDERSQUEUECANCELLED_QUEUE_NAME: !GetAtt OrdersQueueCancelled.QueueName
+          ORDERSQUEUECANCELLED_QUEUE_ARN: !GetAtt OrdersQueueCancelled.Arn
+          ORDERSQUEUECANCELLED_QUEUE_URL: !Ref OrdersQueueCancelled
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OrdersTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OrdersQueueInProcess.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OrdersQueueReceived.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OrdersQueueCompleted.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OrdersQueueCancelled.QueueName
+      Events:
+        ApiPOSTorders:
+          Type: Api
+          Properties:
+            Path: /orders
+            Method: POST
+            RestApiId: !Ref Api
+            
+  OrdersFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OrdersFunction}
