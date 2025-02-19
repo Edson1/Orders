@@ -21,9 +21,10 @@ class TestOrderLambda(unittest.TestCase):
 
         event = {
             "body": json.dumps({
+                "id": "",
                 "descripcion": "Test Order",
-                "fecha_entrega": "2025-12-31",
-                "estado": "enproceso"
+                "fecha_entrega": "10-04-2026",
+                "estado": "recibida"
             })
         }
         response = OrderLambda(event, None)
@@ -39,6 +40,7 @@ class TestOrderLambda(unittest.TestCase):
 
         event = {
             "body": json.dumps({
+                "id": "",
                 'fecha_entrega': "",
                 "descripcion": "Test Order",
                 "estado": "recibida"
@@ -47,15 +49,16 @@ class TestOrderLambda(unittest.TestCase):
         response = OrderLambda(event, None)
 
         self.assertEqual(response["statusCode"], 400)
-        self.assertIn("Missing input data, please verify the request body", response["body"])
+        self.assertIn("Input Validation error", response["body"])
 
     def test_cancelled_order_without_description(self):
         """Test: order fails when 'estado' is 'cancelada' but missing motivo in 'descripcion'"""
 
         event = {
             "body": json.dumps({
+                "id": "",
                 "descripcion": "",
-                "fecha_entrega": "2025-12-31",
+                "fecha_entrega": "10-04-2026",
                 "estado": "cancelada"
             })
         }
@@ -74,8 +77,9 @@ class TestOrderLambda(unittest.TestCase):
 
         event = {
             "body": json.dumps({
+                "id": "",
                 "descripcion": "Test Order",
-                "fecha_entrega": "2025-12-31",
+                "fecha_entrega": "10-04-2026",
                 "estado": "recibida"
             })
         }
